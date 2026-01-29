@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Supervisión Caldero Pirotubular</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: linear-gradient(180deg, #0b1c2d, #102f4a);
+  color: white;
+  text-align: center;
+}
+
+header {
+  padding: 20px;
+  background: #081420;
+  border-bottom: 4px solid #c62828;
+}
+
+header h1 { margin: 5px; font-size: 22px; color: #4fc3f7; }
+header h2 { margin: 5px; font-size: 18px; }
+header h3 { margin-top: 10px; font-size: 16px; color: #ff5252; }
+
+.container { padding: 20px; }
+
+button {
+  padding: 12px 25px;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin: 6px;
+}
+
+/* ---- LED visual ---- */
+.led {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 10px;
+  background: gray;
+}
+
+/* ---- Caldero ---- */
+#btnCaldero { background: #c62828; color: white; }
+#btnCaldero.on { background: #2e7d32; }
+
+/* ---- Termómetro ---- */
+.termometro {
+  width: 80px;
+  height: 300px;
+  border: 3px solid white;
+  border-radius: 40px;
+  margin: 30px auto;
+  position: relative;
+  background: #222;
+}
+
+.nivel {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 0%;
+  background: blue;
+  border-radius: 40px;
+  transition: 0.5s;
+}
+
+.valorTemp { font-size: 22px; }
+
+/* ---- Panel Electroválvula ---- */
+.panel {
+  background: rgba(0,0,0,0.45);
+  padding: 15px;
+  border-radius: 12px;
+  max-width: 500px;
+  margin: 25px auto;
+}
+
+.panel h3 { color: #4fc3f7; }
+
+/* ---- Histórico ---- */
+.historial {
+  background: rgba(0,0,0,0.4);
+  padding: 15px;
+  border-radius: 10px;
+  max-width: 500px;
+  margin: 30px auto;
+  text-align: left;
+}
+
+.historial ul { list-style: none; padding: 0; }
+.historial li { font-size: 14px; margin: 5px 0; }
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>AUTOMATIZACIÓN E INSTRUMENTACIÓN</h1>
+  <h2>Autores: Christopher Nacimba, William Pallo</h2>
+  <h2>TECNOLÓGICO UNIVERSITARIO VIDA NUEVA</h2>
+  <h3>SUPERVISIÓN Y CONTROL DE CALDERO PIROTUBULAR</h3>
+</header>
+
+<div class="container">
+
+  <!-- Caldero -->
+  <button id="btnCaldero" onclick="toggleCaldero()">CALDERO</button>
+  <span class="led" id="ledCaldero"></span>
+
+  <!-- Termómetro -->
+  <div class="termometro">
+    <div class="nivel" id="nivelTemp"></div>
+  </div>
+  <div class="valorTemp" id="tempTexto">Temperatura: -- °C</div>
+
+  <!-- Panel Electroválvula -->
+  <div class="panel">
+    <h3>Control Electroválvula</h3>
+
+    <p>MODO</p>
+    <button onclick="setModo('AUTO')">AUTOMÁTICO</button>
+    <button onclick="setModo('MANUAL')">MANUAL</button>
+    <span class="led" id="ledModo"></span>
+
+    <p>Electroválvula</p>
+    <button onclick="setValvula(true)">ON</button>
+    <button onclick="setValvula(false)">OFF</button>
+    <span class="led" id="ledValvula"></span>
+  </div>
+
+  <!-- Histórico -->
+  <div class="historial">
+    <h3>Histórico de eventos</h3>
+    <button onclick="descargarHistorial()">Descargar</button>
+    <ul id="listaHistorial"></ul>
+  </div>
+
+  <!-- Bluetooth -->
+  <button onclick="conectarBLE()">Conectar Bluetooth</button>
+  <p>Estado BT: <span id="estadoBT" style="color:red;">DESCONECTADO</span></p>
+
+</div>
+
+<script>
+let calderoON=false, modo="AUTO", valvula=false;
+let rxChar;
+
+function toggleCaldero(){
+  calderoON=!calderoON;
+  enviar(calderoON?"RELE_ON":"RELE_OFF");
+  document.getElementById("btnCaldero").classList.toggle("on",calderoON);
+  document.getElementById("ledCaldero").style.background=calderoON?"lime":"red";
+  log(`Caldero ${calderoON?"ENCENDIDO":"APAGADO"}`);
+}
+
+function setModo(m){
+  modo=m;
+  enviar(m==="AUTO"?"MODO_AUTO":"MODO_MANUAL");
+  document.getElementById("ledModo").style.background=m==="AUTO"?"blue":"purple";
+  log(`Modo ${m}`);
+}
+
+function setValvula(e){
+  if(modo!=="MANUAL") return alert("Solo en modo MANUAL");
+  valvula=e;
+  enviar(e?"VALVULA_ON":"VALVULA_OFF");
+  document.getElementById("ledValvula").style.background=e?"lime":"red";
+  log(`Electroválvula ${e?"ON":"OFF"}`);
+}
+
+function enviar(cmd){
+  if(rxChar) rxChar.writeValue(new TextEncoder().encode(cmd));
+}
+
+function log(t){
+  let li=document.createElement("li");
+  li.textContent=`[${new Date().toLocaleTimeString()}] ${t}`;
+  listaHistorial.prepend(li);
+}
+
+function descargarHistorial(){
+  let texto=[...listaHistorial.children].map(li=>li.textContent).join("\n");
+  let a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([texto]));
+  a.download="historial.txt";
+  a.click();
+}
+</script>
+
+</body>
+</html>
